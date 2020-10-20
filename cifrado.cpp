@@ -28,17 +28,69 @@ using namespace std;
 int* PLAIN;
 char KEY[16];
 int SIZE = 16;
+const int ROUNDS = 4;
+char ALLKEYS[16*ROUNDS];
 int MODULE;
+
+
+
+void rotateKeyCipher();
 
 //Funcion para pthreads -----------------------------------------------------------------------------------------------------------------------------------------------
 void *cifrar(void *thread_rank){
+    //Obtener ID del hilo
     int tID;
 	tID = (int)thread_rank;
-    cout<<tID<<endl;
+    int cont;
+
+    //Encriptar bloque asignado
+    for(int i=0; i<ROUNDS; i++){
+        cont = 0;
+        for(int j=tID; j<=(tID+SIZE); j++){
+            PLAIN[j] = char(int(PLAIN[j])+int(ALLKEYS[cont+(i*16)]));
+            cont++;
+        }
+    }
+
+    
+    //Terminar el proceso
+    pthread_exit(NULL);
+}
+
+void *descifrar(void *thread_rank){
+    //Obtener ID del hilo
+    int tID;
+	tID = (int)thread_rank;
+    int cont;
+
+    //Encriptar bloque asignado
+    for(int i=0; i<ROUNDS; i++){
+        cont = 0;
+        for(int j=tID; j<=(tID+SIZE); j++){
+            PLAIN[j] = char(int(PLAIN[j])-int(ALLKEYS[cont+(i*16)]));
+            cont++;
+        }
+    }
+
+    //Terminar el proceso
     pthread_exit(NULL);
 }
 
 //Funciones generales -------------------------------------------------------------------------------------------------------------------------------------------------
+void rotateKeyCipher(){
+    int shift = (int)(SIZE/ROUNDS);
+    char temp[SIZE];
+    for(int i=0; i<SIZE; i++){
+        temp[i]=KEY[i];
+    }
+    for(int i=0; i<SIZE-4; i++){
+        KEY[i+4]=temp[i];
+    }
+    for(int i=0; i<4; i++){
+        KEY[i]=temp[i+12];
+    }
+}
+
 void escribir(char chars[]){
 	ofstream archivo1;
 	archivo1.open("llave.txt",ios_base::app);//Abriendo archivo en modo escritura
@@ -66,6 +118,21 @@ void generateKey(){
 void encriptar(){
     //Generar llave aleatoria
     generateKey();
+    cout<<"Llave: ";
+    for(int i=0; i<SIZE; i++){
+        cout<<KEY[i];
+    }cout<<endl;
+
+    for(int i=0; i<ROUNDS; i++){
+        for(int j=0; j<SIZE; j++){
+            ALLKEYS[j+(i*16)] = KEY[j];
+        }
+        rotateKeyCipher();
+    }
+    cout<<"\n"<<endl;
+    for(int i=0; i<(SIZE*4); i++){
+        cout<<ALLKEYS[i];
+    }cout<<endl;
 
     //Crear objeto de lectura para el archivo
     ifstream lectura("plain.txt",ios::in);
